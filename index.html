@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SPS - Transfer Antar Gudang</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -225,6 +225,11 @@
   .badge-pagi { background: rgba(210,153,34,0.15); color: var(--yellow); }
   .badge-sore { background: rgba(63,185,80,0.15); color: var(--green); }
   .badge-selesai { background: rgba(56,139,253,0.15); color: var(--accent2); }
+  .badge-ok { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge-low { background: rgba(210,153,34,0.15); color: var(--yellow); }
+  .badge-empty { background: rgba(248,81,73,0.15); color: var(--red); }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
 
   /* PHASE INDICATOR */
   .phase-bar {
@@ -311,6 +316,14 @@
   /* Print styles - the PDF preview area */
   #pdf-preview-area { display: none; }
 
+  @media (max-width: 900px) {
+    .sidebar { position: static; width: 100%; height: auto; }
+    .main { margin-left: 0; padding: 16px; }
+    .stats-grid, .form-row.col2, .form-row.col3, .form-row.col4 { grid-template-columns: 1fr; }
+    .record-filters { flex-wrap: wrap; }
+    .table-wrap { overflow-x: auto; }
+  }
+
   @media print {
     body * { visibility: hidden; }
     #pdf-preview-area, #pdf-preview-area * { visibility: visible; }
@@ -375,6 +388,9 @@
     <div class="nav-item" onclick="showPage('records')">
       <span class="icon">📊</span> Rekap Data
     </div>
+    <div class="nav-item" onclick="showPage('inventory')">
+      <span class="icon">📦</span> Inventori
+    </div>
   </div>
   
   <div class="nav-section">
@@ -420,9 +436,31 @@
       <div class="stat-tag tag-yellow">Pending</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Total Salesman</div>
-      <div class="stat-value" id="stat-sales" style="color:var(--green)">0</div>
-      <div class="stat-tag tag-green">Aktif</div>
+      <div class="stat-label">Total SKU</div>
+      <div class="stat-value" id="stat-sku" style="color:var(--green)">0</div>
+      <div class="stat-tag tag-green">Inventori</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📦 Ringkasan Inventori Kritis</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Produk</th>
+            <th style="text-align:center">Stok Awal</th>
+            <th style="text-align:center">Naik</th>
+            <th style="text-align:center">Turun</th>
+            <th style="text-align:center">Jual</th>
+            <th style="text-align:center">Estimasi Gudang</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="dashboard-inventory-table">
+          <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Belum ada data inventori</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -630,6 +668,43 @@
   </div>
 </div>
 
+
+<!-- ============ INVENTORY ============ -->
+<div id="page-inventory" class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Inventori Produk</div>
+      <div class="page-sub">Pantau estimasi stok gudang berdasarkan transaksi naik dan turun</div>
+    </div>
+    <button class="btn btn-outline" onclick="exportInventoryExcel()">📊 Export Inventori</button>
+  </div>
+
+  <div class="alert alert-info">
+    Estimasi gudang = stok awal - total naik + total turun. Kolom jual digunakan untuk audit penjualan salesman.
+  </div>
+
+  <div class="card">
+    <div class="card-title">📦 Status Stok</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Produk</th>
+            <th style="text-align:center">Stok Awal</th>
+            <th style="text-align:center">Total Naik</th>
+            <th style="text-align:center">Total Turun</th>
+            <th style="text-align:center">Total Jual</th>
+            <th style="text-align:center">Estimasi Gudang</th>
+            <th style="text-align:center">Batas Minimum</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="inventory-table"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- ============ MASTER DATA ============ -->
 <div id="page-master" class="page">
   <div class="page-header">
@@ -665,9 +740,27 @@
   <div class="card">
     <div class="card-title">📦 Produk</div>
     <div class="chip-list" id="product-list" style="margin-bottom:12px"></div>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
       <input type="text" class="form-input" id="new-product" placeholder="Nama produk baru" style="max-width:300px">
+      <input type="number" min="0" class="form-input" id="new-product-stock" placeholder="Stok awal" style="max-width:130px">
+      <input type="number" min="0" class="form-input" id="new-product-min" placeholder="Minimum" style="max-width:130px">
       <button class="btn btn-primary" onclick="addProduct()">+ Tambah</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📦 Pengaturan Inventori</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Produk</th>
+            <th style="width:150px;text-align:center">Stok Awal</th>
+            <th style="width:150px;text-align:center">Batas Minimum</th>
+          </tr>
+        </thead>
+        <tbody id="inventory-settings-table"></tbody>
+      </table>
     </div>
   </div>
 
@@ -752,20 +845,82 @@ let state = {
   cabang: 'KARANG TENGAH',
   kaCabang: '',
   adminDefault: '',
+  inventory: {},
   currentFormId: null
 };
 
+const STORAGE_KEY = 'sps_state';
+
+function h(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+  }[ch]));
+}
+
+function toInt(value) {
+  const parsed = parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function normalizeText(value) {
+  return String(value ?? '').trim();
+}
+
+function safeFilename(value) {
+  return normalizeText(value).replace(/[^\w\-.]+/g, '_') || 'export';
+}
+
+function requireXLSX() {
+  if (!window.XLSX) {
+    alert('Library Excel belum tersedia. Periksa koneksi internet atau vendor-kan library XLSX untuk mode offline.');
+    return false;
+  }
+  return true;
+}
+
+function ensureInventoryDefaults() {
+  state.inventory = state.inventory || {};
+  state.products.forEach(product => {
+    if (!state.inventory[product]) {
+      state.inventory[product] = { opening: 0, minimum: 0 };
+    }
+    state.inventory[product].opening = toInt(state.inventory[product].opening);
+    state.inventory[product].minimum = toInt(state.inventory[product].minimum);
+  });
+  Object.keys(state.inventory).forEach(product => {
+    if (!state.products.includes(product)) delete state.inventory[product];
+  });
+}
+
+function migrateState() {
+  state.records = Array.isArray(state.records) ? state.records : [];
+  state.salesmen = Array.isArray(state.salesmen) ? state.salesmen : [];
+  state.cars = Array.isArray(state.cars) ? state.cars : [];
+  state.products = Array.isArray(state.products) ? state.products : [];
+  ensureInventoryDefaults();
+}
+
 // Load from localStorage
 function loadState() {
-  const saved = localStorage.getItem('sps_state');
-  if (saved) {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) {
+    migrateState();
+    return;
+  }
+  try {
     const s = JSON.parse(saved);
     state = { ...state, ...s };
+  } catch (error) {
+    console.error('Gagal membaca data lokal:', error);
+    localStorage.setItem(`${STORAGE_KEY}_corrupt_${Date.now()}`, saved);
+    localStorage.removeItem(STORAGE_KEY);
   }
+  migrateState();
 }
 
 function saveState() {
-  localStorage.setItem('sps_state', JSON.stringify(state));
+  ensureInventoryDefaults();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 // ===================== INIT =====================
@@ -782,6 +937,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderMasterData();
   updateDashboard();
   renderRecordsTable();
+  renderInventoryTable();
   
   // Auto-fill salesman into signature field
   document.getElementById('f-salesman').addEventListener('change', function() {
@@ -802,51 +958,51 @@ function initDropdowns() {
   const filterSal = document.getElementById('filter-salesman');
   salesSel.innerHTML = '<option value="">-- Pilih Salesman --</option>';
   filterSal.innerHTML = '<option value="">Semua Salesman</option>';
-  state.salesmen.forEach(s => {
-    salesSel.innerHTML += `<option value="${s}">${s}</option>`;
-    filterSal.innerHTML += `<option value="${s}">${s}</option>`;
+  state.salesmen.forEach(name => {
+    const safeName = h(name);
+    salesSel.innerHTML += `<option value="${safeName}">${safeName}</option>`;
+    filterSal.innerHTML += `<option value="${safeName}">${safeName}</option>`;
   });
   
   const carSel = document.getElementById('f-polisi');
   carSel.innerHTML = '<option value="">-- Pilih Mobil --</option>';
-  state.cars.forEach(c => {
-    carSel.innerHTML += `<option value="${c}">${c}</option>`;
+  state.cars.forEach(car => {
+    const safeCar = h(car);
+    carSel.innerHTML += `<option value="${safeCar}">${safeCar}</option>`;
   });
 }
 
 function renderProductTable() {
   const tbody = document.getElementById('product-table-body');
-  tbody.innerHTML = '';
-  state.products.forEach((p, i) => {
-    tbody.innerHTML += `
-      <tr>
-        <td style="text-align:center;color:var(--text3)">${i+1}</td>
-        <td>${p}</td>
-        <td style="text-align:center"><input type="number" id="naik-${i}" min="0" placeholder="0" oninput="calcJual(${i})"></td>
-        <td style="text-align:center"><input type="number" id="turun-${i}" min="0" placeholder="0" oninput="calcJual(${i})"></td>
-        <td style="text-align:center"><input type="number" id="jual-${i}" min="0" placeholder="0" style="background:rgba(63,185,80,0.08)"></td>
-      </tr>`;
-  });
+  tbody.innerHTML = state.products.map((product, i) => `
+    <tr>
+      <td class="text-center" style="color:var(--text3)">${i + 1}</td>
+      <td>${h(product)}</td>
+      <td class="text-center"><input type="number" id="naik-${i}" min="0" placeholder="0" oninput="calcJual(${i})"></td>
+      <td class="text-center"><input type="number" id="turun-${i}" min="0" placeholder="0" oninput="calcJual(${i})"></td>
+      <td class="text-center"><input type="number" id="jual-${i}" min="0" placeholder="0" style="background:rgba(63,185,80,0.08)" readonly></td>
+    </tr>`).join('');
 }
 
 function calcJual(i) {
-  const naik = parseInt(document.getElementById(`naik-${i}`).value) || 0;
-  const turun = parseInt(document.getElementById(`turun-${i}`).value) || 0;
+  const naik = toInt(document.getElementById(`naik-${i}`).value);
+  const turun = toInt(document.getElementById(`turun-${i}`).value);
   const jual = naik - turun;
   document.getElementById(`jual-${i}`).value = jual >= 0 ? jual : '';
 }
 
 // ===================== NAVIGATION =====================
 function showPage(page) {
+  const targetPage = document.getElementById('page-' + page);
+  if (!targetPage) return;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
-  event?.target?.closest('.nav-item')?.classList.add('active');
-  // force nav highlight
+  targetPage.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => {
-    if (n.getAttribute('onclick')?.includes(page)) n.classList.add('active');
+    if (n.getAttribute('onclick')?.includes(`'${page}'`)) n.classList.add('active');
   });
   if (page === 'records') renderRecordsTable();
+  if (page === 'inventory') renderInventoryTable();
   if (page === 'dashboard') updateDashboard();
 }
 
@@ -854,30 +1010,30 @@ function showPage(page) {
 function getFormData() {
   const products = state.products.map((p, i) => ({
     name: p,
-    naik: parseInt(document.getElementById(`naik-${i}`).value) || 0,
-    turun: parseInt(document.getElementById(`turun-${i}`).value) || 0,
-    jual: parseInt(document.getElementById(`jual-${i}`).value) || 0
+    naik: toInt(document.getElementById(`naik-${i}`).value),
+    turun: toInt(document.getElementById(`turun-${i}`).value),
+    jual: toInt(document.getElementById(`jual-${i}`).value)
   }));
 
   return {
     id: state.currentFormId || Date.now(),
-    nomer: document.getElementById('f-nomer').value,
-    cabang: document.getElementById('f-cabang').value,
+    nomer: normalizeText(document.getElementById('f-nomer').value),
+    cabang: normalizeText(document.getElementById('f-cabang').value),
     tanggal: document.getElementById('f-tanggal').value,
-    tis: document.getElementById('f-tis').value,
-    salesman: document.getElementById('f-salesman').value,
-    polisi: document.getElementById('f-polisi').value,
-    catatan: document.getElementById('f-catatan').value,
+    tis: normalizeText(document.getElementById('f-tis').value),
+    salesman: normalizeText(document.getElementById('f-salesman').value),
+    polisi: normalizeText(document.getElementById('f-polisi').value),
+    catatan: normalizeText(document.getElementById('f-catatan').value),
     products,
     signs: {
-      naikChecker: document.getElementById('s-naik-checker').value,
-      naikDriver: document.getElementById('s-naik-driver').value,
-      naikAdmin: document.getElementById('s-naik-admin').value,
-      naikKa: document.getElementById('s-naik-ka').value,
-      turunDriver: document.getElementById('s-turun-driver').value,
-      turunChecker: document.getElementById('s-turun-checker').value,
-      turunAdmin: document.getElementById('s-turun-admin').value,
-      turunKa: document.getElementById('s-turun-ka').value,
+      naikChecker: normalizeText(document.getElementById('s-naik-checker').value),
+      naikDriver: normalizeText(document.getElementById('s-naik-driver').value),
+      naikAdmin: normalizeText(document.getElementById('s-naik-admin').value),
+      naikKa: normalizeText(document.getElementById('s-naik-ka').value),
+      turunDriver: normalizeText(document.getElementById('s-turun-driver').value),
+      turunChecker: normalizeText(document.getElementById('s-turun-checker').value),
+      turunAdmin: normalizeText(document.getElementById('s-turun-admin').value),
+      turunKa: normalizeText(document.getElementById('s-turun-ka').value),
     },
     status: getFormStatus(products),
     savedAt: new Date().toISOString()
@@ -894,8 +1050,8 @@ function getFormStatus(products) {
 
 function saveForm() {
   const data = getFormData();
-  if (!data.nomer) { alert('Nomor form wajib diisi!'); return; }
-  if (!data.salesman) { alert('Salesman wajib dipilih!'); return; }
+  if (!data.nomer) { alert('Nomor form wajib diisi!'); return false; }
+  if (!data.salesman) { alert('Salesman wajib dipilih!'); return false; }
   
   const idx = state.records.findIndex(r => r.id === data.id);
   if (idx >= 0) state.records[idx] = data;
@@ -907,6 +1063,8 @@ function saveForm() {
   
   showAlert('Form berhasil disimpan! ✅');
   updatePhaseIndicator(data.status);
+  renderInventoryTable();
+  return true;
 }
 
 function showAlert(msg) {
@@ -956,7 +1114,7 @@ function resetForm() {
 
 // ===================== EXPORT PDF =====================
 function exportPDF() {
-  saveForm();
+  if (!saveForm()) return;
   const data = getFormData();
   buildPDFContent(data);
   setTimeout(() => window.print(), 300);
@@ -971,7 +1129,7 @@ function buildPDFContent(data) {
   const rows = data.products.map((p,i) => `
     <tr>
       <td>${i+1}</td>
-      <td class="product-name">${p.name}</td>
+      <td class="product-name">${h(p.name)}</td>
       <td>${p.naik || ''}</td>
       <td>${p.turun || ''}</td>
       <td>${p.jual || ''}</td>
@@ -985,7 +1143,7 @@ function buildPDFContent(data) {
         <div style="font-size:7px;letter-spacing:2px;color:#888">DISTRIBUTION PARTNER</div>
       </div>
       <div style="text-align:right">
-        <div style="border:2px solid black;padding:4px 12px;font-size:14px;font-weight:900">No: ${data.nomer || 'A - _______'}</div>
+        <div style="border:2px solid black;padding:4px 12px;font-size:14px;font-weight:900">No: ${h(data.nomer || 'A - _______')}</div>
       </div>
     </div>
     <div style="text-align:center;font-size:16px;font-weight:900;letter-spacing:2px;border-top:2px solid black;border-bottom:1px solid black;padding:4px 0;margin-bottom:8px">
@@ -995,21 +1153,21 @@ function buildPDFContent(data) {
       <tr>
         <td style="width:100px">Cabang</td>
         <td style="width:10px">:</td>
-        <td style="font-weight:700">${data.cabang}</td>
+        <td style="font-weight:700">${h(data.cabang)}</td>
         <td style="width:100px">Nomer TIS</td>
         <td style="width:10px">:</td>
-        <td>${data.tis || ''}</td>
+        <td>${h(data.tis || '')}</td>
       </tr>
       <tr>
         <td>Tanggal</td><td>:</td>
         <td>${tgl}</td>
         <td>Sopir / Salesman</td><td>:</td>
-        <td style="font-weight:700">${data.salesman}</td>
+        <td style="font-weight:700">${h(data.salesman)}</td>
       </tr>
       <tr>
         <td>Rit</td><td>:</td><td></td>
         <td>No. Polisi</td><td>:</td>
-        <td style="font-weight:700">${data.polisi}</td>
+        <td style="font-weight:700">${h(data.polisi)}</td>
       </tr>
     </table>
     <table class="pdf-main-table">
@@ -1027,7 +1185,7 @@ function buildPDFContent(data) {
         <tr>
           <td>${i+1}</td>
           <td style="width:60px;border-right:none">${i===0?'Cleo':''}</td>
-          <td class="product-name" style="border-left:none">${p.name}</td>
+          <td class="product-name" style="border-left:none">${h(p.name)}</td>
           <td>${p.naik||''}</td>
           <td>${p.turun||''}</td>
           <td>${p.jual||''}</td>
@@ -1040,7 +1198,7 @@ function buildPDFContent(data) {
         </tr>
       </tbody>
     </table>
-    ${data.catatan ? `<div style="font-size:9px;margin-bottom:6px;padding:4px;border:1px solid #ccc">Catatan: ${data.catatan}</div>` : ''}
+    ${data.catatan ? `<div style="font-size:9px;margin-bottom:6px;padding:4px;border:1px solid #ccc">Catatan: ${h(data.catatan)}</div>` : ''}
     <div style="display:flex;gap:8px;margin-top:8px">
       <div style="flex:1;border:1px solid black;padding:6px">
         <div style="font-weight:700;font-size:9px;text-align:center;border-bottom:1px solid black;padding-bottom:3px;margin-bottom:4px">Otorisasi TAG Naik</div>
@@ -1049,7 +1207,7 @@ function buildPDFContent(data) {
           <div style="text-align:center;font-size:8px">
             <div style="height:30px;border-bottom:1px solid #aaa;margin-bottom:2px"></div>
             <div style="font-weight:700">${r}</div>
-            <div style="font-style:italic;color:#444">${i===0?data.signs.naikChecker:i===1?data.signs.naikDriver:i===2?data.signs.naikAdmin:data.signs.naikKa}</div>
+            <div style="font-style:italic;color:#444">${h(i===0?data.signs.naikChecker:i===1?data.signs.naikDriver:i===2?data.signs.naikAdmin:data.signs.naikKa)}</div>
             <div style="color:#666">${['Checker','Driver/Salesman','Admin Penjualan','Ka. Cabang'][i]}</div>
           </div>`).join('')}
         </div>
@@ -1061,7 +1219,7 @@ function buildPDFContent(data) {
           <div style="text-align:center;font-size:8px">
             <div style="height:30px;border-bottom:1px solid #aaa;margin-bottom:2px"></div>
             <div style="font-weight:700">${r}</div>
-            <div style="font-style:italic;color:#444">${i===0?data.signs.turunDriver:i===1?data.signs.turunChecker:i===2?data.signs.turunAdmin:data.signs.turunKa}</div>
+            <div style="font-style:italic;color:#444">${h(i===0?data.signs.turunDriver:i===1?data.signs.turunChecker:i===2?data.signs.turunAdmin:data.signs.turunKa)}</div>
             <div style="color:#666">${['Driver/Salesman','Checker','Admin Penjualan','Ka. Cabang'][i]}</div>
           </div>`).join('')}
         </div>
@@ -1086,9 +1244,9 @@ function buildWorkbook(data) {
     ...data.products.map((p, i) => [i+1, p.name, p.naik||0, p.turun||0, p.jual||0]),
     [],
     ['', 'TOTAL',
-      data.products.reduce((s,p)=>s+p.naik,0),
-      data.products.reduce((s,p)=>s+p.turun,0),
-      data.products.reduce((s,p)=>s+p.jual,0)
+      data.products.reduce((s,p)=>s+toInt(p.naik),0),
+      data.products.reduce((s,p)=>s+toInt(p.turun),0),
+      data.products.reduce((s,p)=>s+toInt(p.jual),0)
     ],
     [],
     ['OTORISASI TAG NAIK'],
@@ -1107,15 +1265,17 @@ function buildWorkbook(data) {
 }
 
 function exportExcel() {
-  saveForm();
+  if (!requireXLSX()) return;
+  if (!saveForm()) return;
   const data = getFormData();
   const wb = buildWorkbook(data);
-  const fn = `Transfer_${data.nomer.replace(/\s/g,'_')}_${data.tanggal}.xlsx`;
+  const fn = `Transfer_${safeFilename(data.nomer)}_${data.tanggal}.xlsx`;
   XLSX.writeFile(wb, fn);
   showAlert('File Excel berhasil diunduh! 📊');
 }
 
 function exportAllExcel() {
+  if (!requireXLSX()) return;
   if (state.records.length === 0) { alert('Belum ada data untuk diekspor.'); return; }
   const wb = XLSX.utils.book_new();
   
@@ -1123,9 +1283,9 @@ function exportAllExcel() {
   const headers = ['No. Form','Tanggal','Salesman','No. Polisi','Total Naik','Total Turun','Total Jual','Status'];
   const rows = state.records.map(r => [
     r.nomer, r.tanggal, r.salesman, r.polisi,
-    r.products.reduce((s,p)=>s+p.naik,0),
-    r.products.reduce((s,p)=>s+p.turun,0),
-    r.products.reduce((s,p)=>s+p.jual,0),
+    (r.products || []).reduce((s,p)=>s+toInt(p.naik),0),
+    (r.products || []).reduce((s,p)=>s+toInt(p.turun),0),
+    (r.products || []).reduce((s,p)=>s+toInt(p.jual),0),
     r.status
   ]);
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -1150,7 +1310,8 @@ function exportAllExcel() {
 
 // ===================== INPUT SPS =====================
 function inputSPS() {
-  saveForm();
+  if (!requireXLSX()) return;
+  if (!saveForm()) return;
   const data = getFormData();
   if (!data.nomer || !data.salesman) { alert('Lengkapi form terlebih dahulu!'); return; }
   
@@ -1175,15 +1336,15 @@ function inputSPS() {
   ws['!cols'] = [{wch:15},{wch:30},{wch:12},{wch:12},{wch:12},{wch:10}];
   XLSX.utils.book_append_sheet(wb, ws, 'SPS_Import');
   
-  const fn = `SPS_Import_${data.nomer.replace(/\s/g,'_')}_${data.tanggal}.xlsx`;
+  const fn = `SPS_Import_${safeFilename(data.nomer)}_${data.tanggal}.xlsx`;
   
   document.getElementById('sps-modal-content').innerHTML = `
     <table style="width:100%;font-size:12px">
-      <tr><td style="color:var(--text2);padding:4px 0">No. Form</td><td><strong>${data.nomer}</strong></td></tr>
-      <tr><td style="color:var(--text2);padding:4px 0">Salesman</td><td>${data.salesman}</td></tr>
-      <tr><td style="color:var(--text2);padding:4px 0">Tanggal</td><td>${data.tanggal}</td></tr>
+      <tr><td style="color:var(--text2);padding:4px 0">No. Form</td><td><strong>${h(data.nomer)}</strong></td></tr>
+      <tr><td style="color:var(--text2);padding:4px 0">Salesman</td><td>${h(data.salesman)}</td></tr>
+      <tr><td style="color:var(--text2);padding:4px 0">Tanggal</td><td>${h(data.tanggal)}</td></tr>
       <tr><td style="color:var(--text2);padding:4px 0">Total Produk</td><td>${data.products.filter(p=>p.naik>0||p.jual>0).length} item</td></tr>
-      <tr><td style="color:var(--text2);padding:4px 0">File</td><td><code style="font-family:monospace;font-size:11px;color:var(--accent2)">${fn}</code></td></tr>
+      <tr><td style="color:var(--text2);padding:4px 0">File</td><td><code style="font-family:monospace;font-size:11px;color:var(--accent2)">${h(fn)}</code></td></tr>
     </table>`;
   
   document.getElementById('sps-download-btn').onclick = () => {
@@ -1195,10 +1356,129 @@ function inputSPS() {
   document.getElementById('modal-sps').classList.add('open');
 }
 
+
+// ===================== INVENTORY =====================
+function getInventorySummary() {
+  ensureInventoryDefaults();
+  const movement = Object.fromEntries(state.products.map(product => [product, { naik: 0, turun: 0, jual: 0 }]));
+  state.records.forEach(record => {
+    (record.products || []).forEach(product => {
+      if (!movement[product.name]) return;
+      movement[product.name].naik += toInt(product.naik);
+      movement[product.name].turun += toInt(product.turun);
+      movement[product.name].jual += toInt(product.jual);
+    });
+  });
+
+  return state.products.map(product => {
+    const settings = state.inventory[product] || { opening: 0, minimum: 0 };
+    const totals = movement[product] || { naik: 0, turun: 0, jual: 0 };
+    const estimated = settings.opening - totals.naik + totals.turun;
+    const status = estimated <= 0 ? 'empty' : estimated <= settings.minimum ? 'low' : 'ok';
+    return { product, opening: settings.opening, minimum: settings.minimum, ...totals, estimated, status };
+  });
+}
+
+function inventoryStatusBadge(status) {
+  if (status === 'empty') return '<span class="badge badge-empty">❌ Kosong/Minus</span>';
+  if (status === 'low') return '<span class="badge badge-low">⚠️ Rendah</span>';
+  return '<span class="badge badge-ok">✅ Aman</span>';
+}
+
+function renderInventoryTable() {
+  const tbody = document.getElementById('inventory-table');
+  if (!tbody) return;
+  const summary = getInventorySummary();
+  if (summary.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Belum ada produk</td></tr>';
+    return;
+  }
+  tbody.innerHTML = summary.map(item => `
+    <tr>
+      <td>${h(item.product)}</td>
+      <td class="text-center">${item.opening}</td>
+      <td class="text-center">${item.naik}</td>
+      <td class="text-center">${item.turun}</td>
+      <td class="text-center" style="font-weight:700;color:var(--green)">${item.jual}</td>
+      <td class="text-center" style="font-weight:800;color:${item.estimated <= 0 ? 'var(--red)' : 'var(--text)'}">${item.estimated}</td>
+      <td class="text-center">${item.minimum}</td>
+      <td>${inventoryStatusBadge(item.status)}</td>
+    </tr>`).join('');
+}
+
+function renderDashboardInventory(summary = getInventorySummary()) {
+  const tbody = document.getElementById('dashboard-inventory-table');
+  if (!tbody) return;
+  const critical = summary.filter(item => item.status !== 'ok').slice(0, 6);
+  const rows = critical.length ? critical : summary.slice(0, 6);
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Belum ada data inventori</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(item => `
+    <tr>
+      <td>${h(item.product)}</td>
+      <td class="text-center">${item.opening}</td>
+      <td class="text-center">${item.naik}</td>
+      <td class="text-center">${item.turun}</td>
+      <td class="text-center">${item.jual}</td>
+      <td class="text-center" style="font-weight:800;color:${item.estimated <= 0 ? 'var(--red)' : 'var(--text)'}">${item.estimated}</td>
+      <td>${inventoryStatusBadge(item.status)}</td>
+    </tr>`).join('');
+}
+
+function renderInventorySettings() {
+  const tbody = document.getElementById('inventory-settings-table');
+  if (!tbody) return;
+  ensureInventoryDefaults();
+  tbody.innerHTML = state.products.map((product, i) => `
+    <tr>
+      <td>${h(product)}</td>
+      <td class="text-center"><input type="number" class="form-input" min="0" id="inv-opening-${i}" value="${state.inventory[product].opening}"></td>
+      <td class="text-center"><input type="number" class="form-input" min="0" id="inv-min-${i}" value="${state.inventory[product].minimum}"></td>
+    </tr>`).join('');
+}
+
+function saveInventorySettingsFromInputs() {
+  ensureInventoryDefaults();
+  state.products.forEach((product, i) => {
+    state.inventory[product] = {
+      opening: toInt(document.getElementById(`inv-opening-${i}`)?.value),
+      minimum: toInt(document.getElementById(`inv-min-${i}`)?.value)
+    };
+  });
+}
+
+function exportInventoryExcel() {
+  if (!requireXLSX()) return;
+  const wb = XLSX.utils.book_new();
+  const headers = ['Produk', 'Stok Awal', 'Total Naik', 'Total Turun', 'Total Jual', 'Estimasi Gudang', 'Batas Minimum', 'Status'];
+  const rows = getInventorySummary().map(item => [
+    item.product, item.opening, item.naik, item.turun, item.jual, item.estimated, item.minimum,
+    item.status === 'empty' ? 'Kosong/Minus' : item.status === 'low' ? 'Rendah' : 'Aman'
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws['!cols'] = [{wch:30},{wch:12},{wch:12},{wch:12},{wch:12},{wch:16},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Inventori');
+  XLSX.writeFile(wb, `SPS_Inventori_${new Date().toISOString().split('T')[0]}.xlsx`);
+  showAlert('Inventori Excel berhasil diunduh! 📦');
+}
+
 // ===================== DASHBOARD =====================
+function statusLabel(status) {
+  if (status === 'selesai') return '✅ Selesai';
+  if (status === 'pagi') return '🌅 Pagi';
+  return '📝 Draft';
+}
+
+function statusClass(status) {
+  return status === 'selesai' ? 'selesai' : status === 'pagi' ? 'pagi' : 'low';
+}
+
 function updateDashboard() {
   const today = new Date().toISOString().split('T')[0];
   const thisMonth = today.substring(0, 7);
+  const inventorySummary = getInventorySummary();
   
   const todayForms = state.records.filter(r => r.tanggal === today);
   const monthForms = state.records.filter(r => r.tanggal?.startsWith(thisMonth));
@@ -1207,8 +1487,9 @@ function updateDashboard() {
   document.getElementById('stat-today').textContent = todayForms.length;
   document.getElementById('stat-month').textContent = monthForms.length;
   document.getElementById('stat-pending').textContent = pending.length;
-  document.getElementById('stat-sales').textContent = state.salesmen.length;
+  document.getElementById('stat-sku').textContent = state.products.length;
   document.getElementById('sidebar-branch').textContent = state.cabang;
+  renderDashboardInventory(inventorySummary);
   
   const tbody = document.getElementById('dashboard-table');
   const recent = state.records.slice(0, 8);
@@ -1218,14 +1499,14 @@ function updateDashboard() {
   }
   tbody.innerHTML = recent.map(r => `
     <tr>
-      <td><span style="font-family:monospace;color:var(--accent2)">${r.nomer}</span></td>
-      <td>${r.tanggal}</td>
-      <td>${r.salesman}</td>
-      <td>${r.polisi}</td>
-      <td><span class="badge badge-${r.status === 'selesai' ? 'selesai' : r.status === 'pagi' ? 'pagi' : 'pagi'}">${r.status === 'selesai' ? '✅ Selesai' : r.status === 'pagi' ? '🌅 Pagi' : '📝 Draft'}</span></td>
+      <td><span style="font-family:monospace;color:var(--accent2)">${h(r.nomer)}</span></td>
+      <td>${h(r.tanggal)}</td>
+      <td>${h(r.salesman)}</td>
+      <td>${h(r.polisi)}</td>
+      <td><span class="badge badge-${statusClass(r.status)}">${statusLabel(r.status)}</span></td>
       <td style="display:flex;gap:4px">
-        <button class="btn btn-sm btn-outline" onclick="loadFormForEdit(${r.id})">✏️ Edit</button>
-        <button class="btn btn-sm btn-outline" onclick="viewRecord(${r.id})">👁️</button>
+        <button class="btn btn-sm btn-outline" onclick="loadFormForEdit(${Number(r.id)})">✏️ Edit</button>
+        <button class="btn btn-sm btn-outline" onclick="viewRecord(${Number(r.id)})">👁️</button>
       </td>
     </tr>`).join('');
 }
@@ -1240,18 +1521,18 @@ function renderRecordsTable(filtered) {
   }
   tbody.innerHTML = data.map(r => `
     <tr>
-      <td><span style="font-family:monospace;font-size:12px;color:var(--accent2)">${r.nomer}</span></td>
-      <td>${r.tanggal}</td>
-      <td>${r.salesman}</td>
-      <td>${r.polisi}</td>
-      <td style="text-align:center">${r.products.reduce((s,p)=>s+p.naik,0)}</td>
-      <td style="text-align:center">${r.products.reduce((s,p)=>s+p.turun,0)}</td>
-      <td style="text-align:center;font-weight:700;color:var(--green)">${r.products.reduce((s,p)=>s+p.jual,0)}</td>
-      <td><span class="badge badge-${r.status === 'selesai' ? 'selesai' : 'pagi'}">${r.status === 'selesai' ? '✅ Selesai' : r.status === 'pagi' ? '🌅 Pagi' : '📝 Draft'}</span></td>
+      <td><span style="font-family:monospace;font-size:12px;color:var(--accent2)">${h(r.nomer)}</span></td>
+      <td>${h(r.tanggal)}</td>
+      <td>${h(r.salesman)}</td>
+      <td>${h(r.polisi)}</td>
+      <td class="text-center">${(r.products || []).reduce((s,p)=>s+toInt(p.naik),0)}</td>
+      <td class="text-center">${(r.products || []).reduce((s,p)=>s+toInt(p.turun),0)}</td>
+      <td class="text-center" style="font-weight:700;color:var(--green)">${(r.products || []).reduce((s,p)=>s+toInt(p.jual),0)}</td>
+      <td><span class="badge badge-${statusClass(r.status)}">${statusLabel(r.status)}</span></td>
       <td style="display:flex;gap:4px">
-        <button class="btn btn-sm btn-outline" onclick="loadFormForEdit(${r.id})">✏️ Edit</button>
-        <button class="btn btn-sm btn-outline" onclick="viewRecord(${r.id})">👁️ Lihat</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteRecord(${r.id})">🗑️</button>
+        <button class="btn btn-sm btn-outline" onclick="loadFormForEdit(${Number(r.id)})">✏️ Edit</button>
+        <button class="btn btn-sm btn-outline" onclick="viewRecord(${Number(r.id)})">👁️ Lihat</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteRecord(${Number(r.id)})">🗑️</button>
       </td>
     </tr>`).join('');
 }
@@ -1280,6 +1561,7 @@ function deleteRecord(id) {
   state.records = state.records.filter(r => r.id !== id);
   saveState();
   renderRecordsTable();
+  renderInventoryTable();
   updateDashboard();
   showAlert('Form berhasil dihapus');
 }
@@ -1298,12 +1580,10 @@ function loadFormForEdit(id) {
   
   // Products
   state.products.forEach((p, i) => {
-    const prod = r.products.find(x => x.name === p);
-    if (prod) {
-      document.getElementById(`naik-${i}`).value = prod.naik || '';
-      document.getElementById(`turun-${i}`).value = prod.turun || '';
-      document.getElementById(`jual-${i}`).value = prod.jual || '';
-    }
+    const prod = (r.products || []).find(x => x.name === p);
+    document.getElementById(`naik-${i}`).value = prod?.naik || '';
+    document.getElementById(`turun-${i}`).value = prod?.turun || '';
+    document.getElementById(`jual-${i}`).value = prod?.jual || '';
   });
   
   // Signs
@@ -1327,25 +1607,26 @@ function viewRecord(id) {
   const r = state.records.find(x => x.id === id);
   if (!r) return;
   
-  const totalNaik = r.products.reduce((s,p)=>s+p.naik,0);
-  const totalTurun = r.products.reduce((s,p)=>s+p.turun,0);
-  const totalJual = r.products.reduce((s,p)=>s+p.jual,0);
+  const totalNaik = (r.products || []).reduce((s,p)=>s+toInt(p.naik),0);
+  const totalTurun = (r.products || []).reduce((s,p)=>s+toInt(p.turun),0);
+  const totalJual = (r.products || []).reduce((s,p)=>s+toInt(p.jual),0);
+  const movementRows = (r.products || []).filter(p=>p.naik||p.turun||p.jual);
   
   document.getElementById('modal-view-content').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;font-size:12px">
-      <div><span style="color:var(--text2)">No. Form:</span> <strong style="color:var(--accent2)">${r.nomer}</strong></div>
-      <div><span style="color:var(--text2)">Tanggal:</span> ${r.tanggal}</div>
-      <div><span style="color:var(--text2)">Salesman:</span> ${r.salesman}</div>
-      <div><span style="color:var(--text2)">No. Polisi:</span> ${r.polisi}</div>
+      <div><span style="color:var(--text2)">No. Form:</span> <strong style="color:var(--accent2)">${h(r.nomer)}</strong></div>
+      <div><span style="color:var(--text2)">Tanggal:</span> ${h(r.tanggal)}</div>
+      <div><span style="color:var(--text2)">Salesman:</span> ${h(r.salesman)}</div>
+      <div><span style="color:var(--text2)">No. Polisi:</span> ${h(r.polisi)}</div>
     </div>
     <div class="table-wrap" style="margin-bottom:12px">
       <table>
         <thead><tr><th>Produk</th><th>Naik</th><th>Turun</th><th>Jual</th></tr></thead>
         <tbody>
-          ${r.products.filter(p=>p.naik||p.turun||p.jual).map(p=>`
-            <tr><td>${p.name}</td><td style="text-align:center">${p.naik||'-'}</td><td style="text-align:center">${p.turun||'-'}</td><td style="text-align:center;font-weight:700;color:var(--green)">${p.jual||'-'}</td></tr>`).join('')}
+          ${movementRows.length ? movementRows.map(product => `
+            <tr><td>${h(product.name)}</td><td class="text-center">${product.naik||'-'}</td><td class="text-center">${product.turun||'-'}</td><td class="text-center" style="font-weight:700;color:var(--green)">${product.jual||'-'}</td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">Tidak ada pergerakan produk</td></tr>'}
           <tr style="font-weight:700;background:var(--surface2)">
-            <td>TOTAL</td><td style="text-align:center">${totalNaik}</td><td style="text-align:center">${totalTurun}</td><td style="text-align:center;color:var(--green)">${totalJual}</td>
+            <td>TOTAL</td><td class="text-center">${totalNaik}</td><td class="text-center">${totalTurun}</td><td class="text-center" style="color:var(--green)">${totalJual}</td>
           </tr>
         </tbody>
       </table>
@@ -1362,17 +1643,20 @@ function printFromModal() {
 }
 
 function exportFromModal() {
+  if (!requireXLSX()) return;
   const r = state.records.find(x => x.id === viewingId);
   if (!r) return;
   const wb = buildWorkbook(r);
-  XLSX.writeFile(wb, `Transfer_${r.nomer.replace(/\s/g,'_')}_${r.tanggal}.xlsx`);
+  XLSX.writeFile(wb, `Transfer_${safeFilename(r.nomer)}_${r.tanggal}.xlsx`);
 }
 
 // ===================== MASTER DATA =====================
 function renderMasterData() {
+  ensureInventoryDefaults();
   renderChipList('salesman-list', state.salesmen, 'salesman');
   renderChipList('car-list', state.cars, 'car');
   renderChipList('product-list', state.products, 'product');
+  renderInventorySettings();
   document.getElementById('m-cabang').value = state.cabang;
   document.getElementById('m-ka').value = state.kaCabang;
   document.getElementById('m-admin').value = state.adminDefault;
@@ -1381,7 +1665,7 @@ function renderMasterData() {
 function renderChipList(elId, arr, type) {
   document.getElementById(elId).innerHTML = arr.map((item, i) => `
     <div class="chip">
-      ${item}
+      ${h(item)}
       <span class="chip-del" onclick="removeItem('${type}', ${i})">×</span>
     </div>`).join('');
 }
@@ -1389,25 +1673,32 @@ function renderChipList(elId, arr, type) {
 function removeItem(type, idx) {
   if (type === 'salesman') state.salesmen.splice(idx, 1);
   else if (type === 'car') state.cars.splice(idx, 1);
-  else if (type === 'product') state.products.splice(idx, 1);
+  else if (type === 'product') {
+    const removed = state.products.splice(idx, 1)[0];
+    if (removed) delete state.inventory[removed];
+  }
   saveState();
   renderMasterData();
   initDropdowns();
   renderProductTable();
+  renderInventoryTable();
+  updateDashboard();
 }
 
 function addSalesman() {
-  const v = document.getElementById('new-salesman').value.trim();
+  const v = normalizeText(document.getElementById('new-salesman').value);
   if (!v) return;
+  if (state.salesmen.includes(v)) { alert('Salesman sudah ada.'); return; }
   state.salesmen.push(v);
   document.getElementById('new-salesman').value = '';
-  saveState(); renderMasterData(); initDropdowns();
+  saveState(); renderMasterData(); initDropdowns(); updateDashboard();
   showAlert(`Salesman "${v}" ditambahkan ✅`);
 }
 
 function addCar() {
-  const v = document.getElementById('new-car').value.trim().toUpperCase();
+  const v = normalizeText(document.getElementById('new-car').value).toUpperCase();
   if (!v) return;
+  if (state.cars.includes(v)) { alert('Mobil sudah ada.'); return; }
   state.cars.push(v);
   document.getElementById('new-car').value = '';
   saveState(); renderMasterData(); initDropdowns();
@@ -1415,21 +1706,30 @@ function addCar() {
 }
 
 function addProduct() {
-  const v = document.getElementById('new-product').value.trim();
+  const v = normalizeText(document.getElementById('new-product').value);
   if (!v) return;
+  if (state.products.includes(v)) { alert('Produk sudah ada.'); return; }
+  const opening = toInt(document.getElementById('new-product-stock').value);
+  const minimum = toInt(document.getElementById('new-product-min').value);
   state.products.push(v);
+  state.inventory[v] = { opening, minimum };
   document.getElementById('new-product').value = '';
-  saveState(); renderMasterData(); renderProductTable();
+  document.getElementById('new-product-stock').value = '';
+  document.getElementById('new-product-min').value = '';
+  saveState(); renderMasterData(); renderProductTable(); renderInventoryTable(); updateDashboard();
   showAlert(`Produk "${v}" ditambahkan ✅`);
 }
 
 function saveMaster() {
-  state.cabang = document.getElementById('m-cabang').value.trim().toUpperCase() || state.cabang;
-  state.kaCabang = document.getElementById('m-ka').value.trim();
-  state.adminDefault = document.getElementById('m-admin').value.trim();
+  saveInventorySettingsFromInputs();
+  state.cabang = normalizeText(document.getElementById('m-cabang').value).toUpperCase() || state.cabang;
+  state.kaCabang = normalizeText(document.getElementById('m-ka').value);
+  state.adminDefault = normalizeText(document.getElementById('m-admin').value);
   saveState();
   document.getElementById('sidebar-branch').textContent = state.cabang;
   document.getElementById('f-cabang').value = state.cabang;
+  renderInventoryTable();
+  updateDashboard();
   showAlert('Pengaturan disimpan ✅');
 }
 
