@@ -30,6 +30,18 @@
     --radius2: 12px;
   }
 
+  body.light-theme {
+    --bg: #f4f7fb;
+    --surface: #ffffff;
+    --surface2: #f1f5f9;
+    --surface3: #e2e8f0;
+    --border: #cbd5e1;
+    --border2: #e2e8f0;
+    --text: #0f172a;
+    --text2: #475569;
+    --text3: #64748b;
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
   
   body {
@@ -41,6 +53,13 @@
   }
 
   /* SIDEBAR */
+  .mobile-nav-toggle {
+    display: none;
+    position: sticky; top: 0; width: 100%; z-index: 120;
+    padding: 12px 16px; border: 0; border-bottom: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; text-align: left;
+  }
   .sidebar {
     position: fixed; top: 0; left: 0;
     width: 220px; height: 100vh;
@@ -205,8 +224,8 @@
   /* PRODUCT TABLE IN FORM */
   .product-table input {
     background: var(--surface3); border: 1px solid transparent;
-    color: var(--text); border-radius: 6px;
-    padding: 6px 8px; font-size: 13px; width: 90px;
+    color: var(--text); border-radius: 8px;
+    padding: 10px 8px; font-size: 16px; width: 100%; min-width: 88px;
     font-family: 'Plus Jakarta Sans', sans-serif;
     text-align: center;
   }
@@ -215,6 +234,10 @@
     background: var(--surface2);
   }
   .product-table td:first-child { color: var(--text2); font-size: 12px; }
+  .product-table th:nth-child(2), .product-table td:nth-child(2) { min-width: 180px; }
+  .product-table th:nth-child(n+3), .product-table td:nth-child(n+3) { width: 24%; }
+  .mobile-hint { display:none; color: var(--text3); font-size: 12px; margin-top: 6px; }
+  .inventory-adjust-grid { display:grid; grid-template-columns: 1.4fr 0.8fr 0.8fr 1.2fr auto; gap:8px; align-items:end; }
 
   /* BADGE */
   .badge {
@@ -317,11 +340,28 @@
   #pdf-preview-area { display: none; }
 
   @media (max-width: 900px) {
-    .sidebar { position: static; width: 100%; height: auto; }
-    .main { margin-left: 0; padding: 16px; }
-    .stats-grid, .form-row.col2, .form-row.col3, .form-row.col4 { grid-template-columns: 1fr; }
+    body { font-size: 15px; }
+    .mobile-nav-toggle { display: block; }
+    .sidebar { position: sticky; top: 45px; width: 100%; height: auto; max-height: 0; overflow: hidden; border-right: 0; border-bottom: 1px solid var(--border); transition: max-height 0.2s ease; }
+    .sidebar.open { max-height: 80vh; overflow-y: auto; }
+    .sidebar-logo { padding: 14px 16px 10px; }
+    .nav-section { padding: 8px; }
+    .nav-item { padding: 12px 14px; font-size: 15px; }
+    .main { margin-left: 0; padding: 12px; }
+    .page-header { align-items:flex-start; gap:12px; flex-direction:column; margin-bottom:16px; }
+    .stats-grid, .form-row.col2, .form-row.col3, .form-row.col4, .inventory-adjust-grid { grid-template-columns: 1fr; }
+    .card { padding: 14px; }
     .record-filters { flex-wrap: wrap; }
-    .table-wrap { overflow-x: auto; }
+    .record-filters .form-input, .record-filters .form-select { max-width:none !important; width:100%; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .product-table { min-width: 560px; }
+    .product-table input { font-size: 18px; min-height: 44px; }
+    .phase-bar { flex-direction:column; }
+    .phase-step { border-right:0; border-bottom:1px solid var(--border); }
+    .phase-step:last-child { border-bottom:0; }
+    .btn-lg, .btn { width:100%; justify-content:center; min-height:44px; }
+    .mobile-hint { display:block; }
+    .modal { width: 94vw; padding: 16px; }
   }
 
   @media print {
@@ -371,7 +411,8 @@
 <body>
 
 <!-- SIDEBAR -->
-<div class="sidebar">
+<button class="mobile-nav-toggle" type="button" onclick="toggleNav()">☰ Menu</button>
+<div class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="brand">⚡ SPS</div>
     <div class="sub">Distribution Partner</div>
@@ -379,17 +420,17 @@
   
   <div class="nav-section">
     <div class="nav-label">Menu Utama</div>
-    <div class="nav-item active" onclick="showPage('dashboard')">
-      <span class="icon">🏠</span> Dashboard
-    </div>
-    <div class="nav-item" onclick="showPage('form')">
-      <span class="icon">📋</span> Buat Form Baru
+    <div class="nav-item active" onclick="showPage('form')">
+      <span class="icon">📋</span> Form Baru
     </div>
     <div class="nav-item" onclick="showPage('records')">
       <span class="icon">📊</span> Rekap Data
     </div>
+    <div class="nav-item" onclick="showPage('dashboard')">
+      <span class="icon">🏠</span> Dashboard
+    </div>
     <div class="nav-item" onclick="showPage('inventory')">
-      <span class="icon">📦</span> Inventori
+      <span class="icon">📦</span> Inventory
     </div>
   </div>
   
@@ -397,6 +438,9 @@
     <div class="nav-label">Pengaturan</div>
     <div class="nav-item" onclick="showPage('master')">
       <span class="icon">⚙️</span> Master Data
+    </div>
+    <div class="nav-item" onclick="toggleTheme()">
+      <span class="icon">🌓</span> <span id="theme-label">Mode Light</span>
     </div>
   </div>
   
@@ -410,7 +454,7 @@
 <div class="main">
 
 <!-- ============ DASHBOARD ============ -->
-<div id="page-dashboard" class="page active">
+<div id="page-dashboard" class="page">
   <div class="page-header">
     <div>
       <div class="page-title">Dashboard</div>
@@ -436,14 +480,14 @@
       <div class="stat-tag tag-yellow">Pending</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Total SKU</div>
+      <div class="stat-label">Total Produk Aktif</div>
       <div class="stat-value" id="stat-sku" style="color:var(--green)">0</div>
-      <div class="stat-tag tag-green">Inventori</div>
+      <div class="stat-tag tag-green">Master Produk</div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">📦 Ringkasan Inventori Kritis</div>
+    <div class="card-title">📦 Ringkasan Inventori</div>
     <div class="table-wrap">
       <table>
         <thead>
@@ -453,12 +497,13 @@
             <th style="text-align:center">Naik</th>
             <th style="text-align:center">Turun</th>
             <th style="text-align:center">Jual</th>
+            <th style="text-align:center">Penyesuaian</th>
             <th style="text-align:center">Estimasi Gudang</th>
             <th>Status</th>
           </tr>
         </thead>
         <tbody id="dashboard-inventory-table">
-          <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Belum ada data inventori</td></tr>
+          <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Belum ada data inventori</td></tr>
         </tbody>
       </table>
     </div>
@@ -487,7 +532,7 @@
 </div>
 
 <!-- ============ FORM BARU ============ -->
-<div id="page-form" class="page">
+<div id="page-form" class="page active">
   <div class="page-header">
     <div>
       <div class="page-title">Form Transfer Antar Gudang</div>
@@ -511,7 +556,7 @@
     <div class="form-row col3">
       <div class="form-group">
         <div class="form-label">No. Form</div>
-        <input type="text" class="form-input" id="f-nomer" placeholder="A - 3070355">
+        <input type="text" class="form-input" id="f-nomer" placeholder="Otomatis" readonly>
       </div>
       <div class="form-group">
         <div class="form-label">Cabang</div>
@@ -545,6 +590,7 @@
   <!-- Products Table -->
   <div class="card">
     <div class="card-title">📦 Data Produk</div>
+    <div class="mobile-hint">Geser tabel ke samping jika kolom belum terlihat penuh di layar HP.</div>
     <div class="table-wrap">
       <table class="product-table">
         <thead>
@@ -561,51 +607,15 @@
     </div>
   </div>
 
-  <!-- Signatures -->
-  <div class="form-row col2">
-    <div class="card">
-      <div class="card-title">✍️ Otorisasi TAG Naik (Pagi)</div>
-      <div class="form-row col2">
-        <div class="form-group">
-          <div class="form-label">Checker</div>
-          <input type="text" class="form-input" id="s-naik-checker" placeholder="Nama checker">
-        </div>
-        <div class="form-group">
-          <div class="form-label">Driver / Salesman</div>
-          <input type="text" class="form-input" id="s-naik-driver" placeholder="Otomatis dari salesman" readonly>
-        </div>
-        <div class="form-group">
-          <div class="form-label">Admin Penjualan</div>
-          <input type="text" class="form-input" id="s-naik-admin" placeholder="Nama admin">
-        </div>
-        <div class="form-group">
-          <div class="form-label">Ka. Cabang</div>
-          <input type="text" class="form-input" id="s-naik-ka" placeholder="Nama Ka.Cabang">
-        </div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">✍️ Otorisasi TAG Turun (Sore)</div>
-      <div class="form-row col2">
-        <div class="form-group">
-          <div class="form-label">Driver / Salesman</div>
-          <input type="text" class="form-input" id="s-turun-driver" placeholder="Otomatis dari salesman" readonly>
-        </div>
-        <div class="form-group">
-          <div class="form-label">Checker</div>
-          <input type="text" class="form-input" id="s-turun-checker" placeholder="Nama checker">
-        </div>
-        <div class="form-group">
-          <div class="form-label">Admin Penjualan</div>
-          <input type="text" class="form-input" id="s-turun-admin" placeholder="Nama admin">
-        </div>
-        <div class="form-group">
-          <div class="form-label">Ka. Cabang</div>
-          <input type="text" class="form-input" id="s-turun-ka" placeholder="Nama Ka.Cabang">
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- Hidden signature data: printed in PDF only -->
+  <input type="hidden" id="s-naik-checker">
+  <input type="hidden" id="s-naik-driver">
+  <input type="hidden" id="s-naik-admin">
+  <input type="hidden" id="s-naik-ka">
+  <input type="hidden" id="s-turun-driver">
+  <input type="hidden" id="s-turun-checker">
+  <input type="hidden" id="s-turun-admin">
+  <input type="hidden" id="s-turun-ka">
 
   <!-- Catatan -->
   <div class="card">
@@ -623,6 +633,7 @@
     <button class="btn btn-primary btn-lg" onclick="exportPDF()">🖨️ Export PDF</button>
     <button class="btn btn-outline btn-lg" onclick="exportExcel()">📊 Export Excel</button>
     <button class="btn btn-outline btn-lg" onclick="inputSPS()">⚡ Input ke SPS</button>
+    <button class="btn btn-primary btn-lg" onclick="syncToSPS()">🔄 Sinkron ke SPS</button>
   </div>
 </div>
 
@@ -680,7 +691,33 @@
   </div>
 
   <div class="alert alert-info">
-    Estimasi gudang = stok awal - total naik + total turun. Kolom jual digunakan untuk audit penjualan salesman.
+    Estimasi gudang = stok awal + penyesuaian masuk - penyesuaian keluar - total naik + total turun. Gunakan penyesuaian untuk kiriman pusat atau suplai ke cabang lain.
+  </div>
+
+  <div class="card">
+    <div class="card-title">➕ Penyesuaian Stok Gudang</div>
+    <div class="inventory-adjust-grid">
+      <div class="form-group">
+        <div class="form-label">Produk</div>
+        <select class="form-select" id="adj-product"></select>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Tipe</div>
+        <select class="form-select" id="adj-type">
+          <option value="in">Tambah / Kiriman Pusat</option>
+          <option value="out">Kurang / Suplai Cabang</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Qty</div>
+        <input type="number" min="1" class="form-input" id="adj-qty" placeholder="0">
+      </div>
+      <div class="form-group">
+        <div class="form-label">Catatan</div>
+        <input type="text" class="form-input" id="adj-note" placeholder="Opsional">
+      </div>
+      <button class="btn btn-success" onclick="addInventoryAdjustment()">Simpan</button>
+    </div>
   </div>
 
   <div class="card">
@@ -694,6 +731,7 @@
             <th style="text-align:center">Total Naik</th>
             <th style="text-align:center">Total Turun</th>
             <th style="text-align:center">Total Jual</th>
+            <th style="text-align:center">Penyesuaian</th>
             <th style="text-align:center">Estimasi Gudang</th>
             <th style="text-align:center">Batas Minimum</th>
             <th>Status</th>
@@ -719,8 +757,9 @@
     <div class="card">
       <div class="card-title">👤 Salesman</div>
       <div class="chip-list" id="salesman-list" style="margin-bottom:12px"></div>
-      <div style="display:flex;gap:8px">
-        <input type="text" class="form-input" id="new-salesman" placeholder="Nama salesman baru">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input type="text" class="form-input" id="new-salesman" placeholder="Nama salesman baru" style="flex:1;min-width:160px">
+        <input type="text" class="form-input" id="new-salesman-car" placeholder="No. polisi sales" style="flex:1;min-width:150px">
         <button class="btn btn-primary" onclick="addSalesman()">+ Tambah</button>
       </div>
     </div>
@@ -788,8 +827,8 @@
   <div class="sps-card">
     <div class="sps-title">⚡ Informasi Input SPS</div>
     <div class="sps-desc">
-      Fitur "Input ke SPS" akan mengunduh file Excel yang sudah diformat sesuai template input sistem SPS. 
-      File tersebut berisi data dari form yang siap di-copy-paste atau di-import langsung ke sistem SPS tanpa perlu menginput ulang secara manual.
+      Aplikasi ini dirancang untuk mengganti pencatatan kertas di lapangan via HP, lalu menyiapkan data digital agar bisa masuk ke SPS.
+      Fitur "Input ke SPS" dan "Sinkron ke SPS" akan menyimpan form, membuat file Excel template SPS, dan menyiapkan data untuk di-copy-paste atau di-import tanpa mengetik ulang.
       <br><br>
       Format output: <strong>SPS_Import_[NomorForm]_[Tanggal].xlsx</strong>
     </div>
@@ -837,6 +876,7 @@ let state = {
   records: [],
   salesmen: ['Rohman', 'Ahmad', 'Budi'],
   cars: ['T 8941 HH', 'B 1234 XY', 'B 5678 AB'],
+  salesmanCars: { Rohman: 'T 8941 HH', Ahmad: 'B 1234 XY', Budi: 'B 5678 AB' },
   products: [
     'AMDK 19 ltr', 'Galon kosong Cleo', 'AMDK 19 ltr IDM', 'Galon kosong IDM',
     'Cleo Mini 220', 'Cleo Cup 120 extra', 'Cleo Cup 220',
@@ -846,6 +886,7 @@ let state = {
   kaCabang: '',
   adminDefault: '',
   inventory: {},
+  inventoryAdjustments: [],
   currentFormId: null
 };
 
@@ -880,6 +921,7 @@ function requireXLSX() {
 
 function ensureInventoryDefaults() {
   state.inventory = state.inventory || {};
+  state.inventoryAdjustments = Array.isArray(state.inventoryAdjustments) ? state.inventoryAdjustments : [];
   state.products.forEach(product => {
     if (!state.inventory[product]) {
       state.inventory[product] = { opening: 0, minimum: 0 };
@@ -890,6 +932,61 @@ function ensureInventoryDefaults() {
   Object.keys(state.inventory).forEach(product => {
     if (!state.products.includes(product)) delete state.inventory[product];
   });
+  state.inventoryAdjustments = state.inventoryAdjustments.filter(adj => state.products.includes(adj.product));
+}
+
+function ensureSalesmanCars() {
+  state.salesmanCars = state.salesmanCars && typeof state.salesmanCars === 'object' ? state.salesmanCars : {};
+  state.salesmen.forEach((name, index) => {
+    if (!state.salesmanCars[name] && state.cars[index]) state.salesmanCars[name] = state.cars[index];
+  });
+  Object.keys(state.salesmanCars).forEach(name => {
+    if (!state.salesmen.includes(name)) delete state.salesmanCars[name];
+  });
+}
+
+function generateFormNumber(dateValue = document.getElementById('f-tanggal')?.value) {
+  const date = dateValue || new Date().toISOString().split('T')[0];
+  const compact = date.replaceAll('-', '');
+  const sameDayNumbers = state.records
+    .map(record => record.nomer || '')
+    .filter(nomer => nomer.startsWith(`SPS-${compact}-`))
+    .map(nomer => toInt(nomer.split('-').pop()));
+  const next = Math.max(0, ...sameDayNumbers) + 1;
+  return `SPS-${compact}-${String(next).padStart(3, '0')}`;
+}
+
+function setAutoFormNumber(force = false) {
+  const input = document.getElementById('f-nomer');
+  if (!input) return;
+  if (force || !input.value) input.value = generateFormNumber();
+}
+
+function applySalesmanCar() {
+  const salesman = document.getElementById('f-salesman').value;
+  const car = state.salesmanCars?.[salesman] || '';
+  const carSel = document.getElementById('f-polisi');
+  if (car && !state.cars.includes(car)) state.cars.push(car);
+  initCarDropdown(car);
+  carSel.value = car;
+  document.getElementById('s-naik-driver').value = salesman;
+  document.getElementById('s-turun-driver').value = salesman;
+}
+
+function applyTheme(theme) {
+  const selected = theme || localStorage.getItem(`${STORAGE_KEY}_theme`) || 'dark';
+  document.body.classList.toggle('light-theme', selected === 'light');
+  localStorage.setItem(`${STORAGE_KEY}_theme`, selected);
+  const label = document.getElementById('theme-label');
+  if (label) label.textContent = selected === 'light' ? 'Mode Dark' : 'Mode Light';
+}
+
+function toggleTheme() {
+  applyTheme(document.body.classList.contains('light-theme') ? 'dark' : 'light');
+}
+
+function toggleNav() {
+  document.getElementById('sidebar')?.classList.toggle('open');
 }
 
 function migrateState() {
@@ -897,6 +994,7 @@ function migrateState() {
   state.salesmen = Array.isArray(state.salesmen) ? state.salesmen : [];
   state.cars = Array.isArray(state.cars) ? state.cars : [];
   state.products = Array.isArray(state.products) ? state.products : [];
+  ensureSalesmanCars();
   ensureInventoryDefaults();
 }
 
@@ -931,6 +1029,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const today = new Date();
   document.getElementById('today-date').textContent = today.toLocaleDateString('id-ID', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   document.getElementById('f-tanggal').value = today.toISOString().split('T')[0];
+  applyTheme();
+  setAutoFormNumber(true);
   
   initDropdowns();
   renderProductTable();
@@ -938,11 +1038,12 @@ document.addEventListener('DOMContentLoaded', () => {
   updateDashboard();
   renderRecordsTable();
   renderInventoryTable();
+  renderInventoryAdjustmentProducts();
   
-  // Auto-fill salesman into signature field
-  document.getElementById('f-salesman').addEventListener('change', function() {
-    document.getElementById('s-naik-driver').value = this.value;
-    document.getElementById('s-turun-driver').value = this.value;
+  // Auto-fill salesman and assigned vehicle
+  document.getElementById('f-salesman').addEventListener('change', applySalesmanCar);
+  document.getElementById('f-tanggal').addEventListener('change', () => {
+    if (!state.currentFormId) setAutoFormNumber(true);
   });
   
   // Auto-fill default admin/ka
@@ -951,9 +1052,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('s-turun-admin').value = state.adminDefault || '';
   document.getElementById('s-turun-ka').value = state.kaCabang || '';
   document.getElementById('f-cabang').value = state.cabang;
+  showPage('form');
 });
 
 function initDropdowns() {
+  ensureSalesmanCars();
+  const currentSalesman = document.getElementById('f-salesman')?.value || '';
   const salesSel = document.getElementById('f-salesman');
   const filterSal = document.getElementById('filter-salesman');
   salesSel.innerHTML = '<option value="">-- Pilih Salesman --</option>';
@@ -963,13 +1067,20 @@ function initDropdowns() {
     salesSel.innerHTML += `<option value="${safeName}">${safeName}</option>`;
     filterSal.innerHTML += `<option value="${safeName}">${safeName}</option>`;
   });
-  
+  if (currentSalesman) salesSel.value = currentSalesman;
+  initCarDropdown(document.getElementById('f-polisi')?.value);
+  renderInventoryAdjustmentProducts();
+}
+
+function initCarDropdown(selected = '') {
   const carSel = document.getElementById('f-polisi');
-  carSel.innerHTML = '<option value="">-- Pilih Mobil --</option>';
+  if (!carSel) return;
+  carSel.innerHTML = '<option value="">Otomatis dari salesman</option>';
   state.cars.forEach(car => {
     const safeCar = h(car);
     carSel.innerHTML += `<option value="${safeCar}">${safeCar}</option>`;
   });
+  carSel.value = selected || '';
 }
 
 function renderProductTable() {
@@ -1004,7 +1115,9 @@ function showPage(page) {
   if (page === 'records') renderRecordsTable();
   if (page === 'inventory') renderInventoryTable();
   if (page === 'dashboard') updateDashboard();
+  if (window.matchMedia('(max-width: 900px)').matches) document.getElementById('sidebar')?.classList.remove('open');
 }
+
 
 // ===================== FORM OPERATIONS =====================
 function getFormData() {
@@ -1017,7 +1130,7 @@ function getFormData() {
 
   return {
     id: state.currentFormId || Date.now(),
-    nomer: normalizeText(document.getElementById('f-nomer').value),
+    nomer: normalizeText(document.getElementById('f-nomer').value) || generateFormNumber(),
     cabang: normalizeText(document.getElementById('f-cabang').value),
     tanggal: document.getElementById('f-tanggal').value,
     tis: normalizeText(document.getElementById('f-tis').value),
@@ -1049,8 +1162,8 @@ function getFormStatus(products) {
 }
 
 function saveForm() {
+  setAutoFormNumber();
   const data = getFormData();
-  if (!data.nomer) { alert('Nomor form wajib diisi!'); return false; }
   if (!data.salesman) { alert('Salesman wajib dipilih!'); return false; }
   
   const idx = state.records.findIndex(r => r.id === data.id);
@@ -1093,12 +1206,12 @@ function updatePhaseIndicator(status) {
 function resetForm() {
   if (!confirm('Reset form? Semua input akan dihapus.')) return;
   state.currentFormId = null;
-  document.getElementById('f-nomer').value = '';
+  document.getElementById('f-tanggal').value = new Date().toISOString().split('T')[0];
+  setAutoFormNumber(true);
   document.getElementById('f-tis').value = '';
   document.getElementById('f-salesman').value = '';
   document.getElementById('f-polisi').value = '';
   document.getElementById('f-catatan').value = '';
-  document.getElementById('f-tanggal').value = new Date().toISOString().split('T')[0];
   renderProductTable();
   document.getElementById('s-naik-checker').value = '';
   document.getElementById('s-naik-driver').value = '';
@@ -1309,7 +1422,11 @@ function exportAllExcel() {
 }
 
 // ===================== INPUT SPS =====================
-function inputSPS() {
+function syncToSPS() {
+  inputSPS(true);
+}
+
+function inputSPS(autoDownload = false) {
   if (!requireXLSX()) return;
   if (!saveForm()) return;
   const data = getFormData();
@@ -1347,20 +1464,22 @@ function inputSPS() {
       <tr><td style="color:var(--text2);padding:4px 0">File</td><td><code style="font-family:monospace;font-size:11px;color:var(--accent2)">${h(fn)}</code></td></tr>
     </table>`;
   
-  document.getElementById('sps-download-btn').onclick = () => {
+  const downloadSPS = () => {
     XLSX.writeFile(wb, fn);
-    showAlert('File SPS berhasil diunduh! ⚡');
+    showAlert(autoDownload ? 'Data berhasil diekspor dan disiapkan untuk sinkron SPS! 🔄' : 'File SPS berhasil diunduh! ⚡');
     closeModal('modal-sps');
   };
+  document.getElementById('sps-download-btn').onclick = downloadSPS;
   
-  document.getElementById('modal-sps').classList.add('open');
+  if (autoDownload) downloadSPS();
+  else document.getElementById('modal-sps').classList.add('open');
 }
 
 
 // ===================== INVENTORY =====================
 function getInventorySummary() {
   ensureInventoryDefaults();
-  const movement = Object.fromEntries(state.products.map(product => [product, { naik: 0, turun: 0, jual: 0 }]));
+  const movement = Object.fromEntries(state.products.map(product => [product, { naik: 0, turun: 0, jual: 0, adjIn: 0, adjOut: 0 }]));
   state.records.forEach(record => {
     (record.products || []).forEach(product => {
       if (!movement[product.name]) return;
@@ -1369,13 +1488,19 @@ function getInventorySummary() {
       movement[product.name].jual += toInt(product.jual);
     });
   });
+  state.inventoryAdjustments.forEach(adj => {
+    if (!movement[adj.product]) return;
+    if (adj.type === 'out') movement[adj.product].adjOut += toInt(adj.qty);
+    else movement[adj.product].adjIn += toInt(adj.qty);
+  });
 
   return state.products.map(product => {
     const settings = state.inventory[product] || { opening: 0, minimum: 0 };
-    const totals = movement[product] || { naik: 0, turun: 0, jual: 0 };
-    const estimated = settings.opening - totals.naik + totals.turun;
+    const totals = movement[product] || { naik: 0, turun: 0, jual: 0, adjIn: 0, adjOut: 0 };
+    const adjustmentNet = totals.adjIn - totals.adjOut;
+    const estimated = settings.opening + adjustmentNet - totals.naik + totals.turun;
     const status = estimated <= 0 ? 'empty' : estimated <= settings.minimum ? 'low' : 'ok';
-    return { product, opening: settings.opening, minimum: settings.minimum, ...totals, estimated, status };
+    return { product, opening: settings.opening, minimum: settings.minimum, ...totals, adjustmentNet, estimated, status };
   });
 }
 
@@ -1390,7 +1515,7 @@ function renderInventoryTable() {
   if (!tbody) return;
   const summary = getInventorySummary();
   if (summary.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Belum ada produk</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Belum ada produk</td></tr>';
     return;
   }
   tbody.innerHTML = summary.map(item => `
@@ -1400,6 +1525,7 @@ function renderInventoryTable() {
       <td class="text-center">${item.naik}</td>
       <td class="text-center">${item.turun}</td>
       <td class="text-center" style="font-weight:700;color:var(--green)">${item.jual}</td>
+      <td class="text-center">${item.adjustmentNet >= 0 ? '+' : ''}${item.adjustmentNet}</td>
       <td class="text-center" style="font-weight:800;color:${item.estimated <= 0 ? 'var(--red)' : 'var(--text)'}">${item.estimated}</td>
       <td class="text-center">${item.minimum}</td>
       <td>${inventoryStatusBadge(item.status)}</td>
@@ -1409,10 +1535,9 @@ function renderInventoryTable() {
 function renderDashboardInventory(summary = getInventorySummary()) {
   const tbody = document.getElementById('dashboard-inventory-table');
   if (!tbody) return;
-  const critical = summary.filter(item => item.status !== 'ok').slice(0, 6);
-  const rows = critical.length ? critical : summary.slice(0, 6);
+  const rows = summary;
   if (rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Belum ada data inventori</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Belum ada data inventori</td></tr>';
     return;
   }
   tbody.innerHTML = rows.map(item => `
@@ -1422,6 +1547,7 @@ function renderDashboardInventory(summary = getInventorySummary()) {
       <td class="text-center">${item.naik}</td>
       <td class="text-center">${item.turun}</td>
       <td class="text-center">${item.jual}</td>
+      <td class="text-center">${item.adjustmentNet >= 0 ? '+' : ''}${item.adjustmentNet}</td>
       <td class="text-center" style="font-weight:800;color:${item.estimated <= 0 ? 'var(--red)' : 'var(--text)'}">${item.estimated}</td>
       <td>${inventoryStatusBadge(item.status)}</td>
     </tr>`).join('');
@@ -1449,16 +1575,39 @@ function saveInventorySettingsFromInputs() {
   });
 }
 
+function renderInventoryAdjustmentProducts() {
+  const select = document.getElementById('adj-product');
+  if (!select) return;
+  const selected = select.value;
+  select.innerHTML = state.products.map(product => `<option value="${h(product)}">${h(product)}</option>`).join('');
+  if (selected) select.value = selected;
+}
+
+function addInventoryAdjustment() {
+  const product = document.getElementById('adj-product').value;
+  const type = document.getElementById('adj-type').value;
+  const qty = toInt(document.getElementById('adj-qty').value);
+  const note = normalizeText(document.getElementById('adj-note').value);
+  if (!product || qty <= 0) { alert('Pilih produk dan isi qty penyesuaian.'); return; }
+  state.inventoryAdjustments.unshift({ id: Date.now(), date: new Date().toISOString(), product, type, qty, note });
+  document.getElementById('adj-qty').value = '';
+  document.getElementById('adj-note').value = '';
+  saveState();
+  renderInventoryTable();
+  updateDashboard();
+  showAlert(type === 'out' ? 'Stok berhasil dikurangi ✅' : 'Stok berhasil ditambah ✅');
+}
+
 function exportInventoryExcel() {
   if (!requireXLSX()) return;
   const wb = XLSX.utils.book_new();
-  const headers = ['Produk', 'Stok Awal', 'Total Naik', 'Total Turun', 'Total Jual', 'Estimasi Gudang', 'Batas Minimum', 'Status'];
+  const headers = ['Produk', 'Stok Awal', 'Total Naik', 'Total Turun', 'Total Jual', 'Penyesuaian Masuk', 'Penyesuaian Keluar', 'Estimasi Gudang', 'Batas Minimum', 'Status'];
   const rows = getInventorySummary().map(item => [
-    item.product, item.opening, item.naik, item.turun, item.jual, item.estimated, item.minimum,
+    item.product, item.opening, item.naik, item.turun, item.jual, item.adjIn, item.adjOut, item.estimated, item.minimum,
     item.status === 'empty' ? 'Kosong/Minus' : item.status === 'low' ? 'Rendah' : 'Aman'
   ]);
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  ws['!cols'] = [{wch:30},{wch:12},{wch:12},{wch:12},{wch:12},{wch:16},{wch:14},{wch:14}];
+  ws['!cols'] = [{wch:30},{wch:12},{wch:12},{wch:12},{wch:12},{wch:18},{wch:18},{wch:16},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb, ws, 'Inventori');
   XLSX.writeFile(wb, `SPS_Inventori_${new Date().toISOString().split('T')[0]}.xlsx`);
   showAlert('Inventori Excel berhasil diunduh! 📦');
@@ -1652,6 +1801,7 @@ function exportFromModal() {
 
 // ===================== MASTER DATA =====================
 function renderMasterData() {
+  ensureSalesmanCars();
   ensureInventoryDefaults();
   renderChipList('salesman-list', state.salesmen, 'salesman');
   renderChipList('car-list', state.cars, 'car');
@@ -1663,19 +1813,35 @@ function renderMasterData() {
 }
 
 function renderChipList(elId, arr, type) {
-  document.getElementById(elId).innerHTML = arr.map((item, i) => `
+  document.getElementById(elId).innerHTML = arr.map((item, i) => {
+    const extra = type === 'salesman' && state.salesmanCars?.[item] ? ` • ${h(state.salesmanCars[item])}` : '';
+    return `
     <div class="chip">
-      ${h(item)}
+      ${h(item)}${extra}
       <span class="chip-del" onclick="removeItem('${type}', ${i})">×</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function removeItem(type, idx) {
-  if (type === 'salesman') state.salesmen.splice(idx, 1);
-  else if (type === 'car') state.cars.splice(idx, 1);
+  if (type === 'salesman') {
+    const removed = state.salesmen.splice(idx, 1)[0];
+    if (removed) delete state.salesmanCars[removed];
+  }
+  else if (type === 'car') {
+    const removed = state.cars.splice(idx, 1)[0];
+    if (removed) {
+      Object.keys(state.salesmanCars).forEach(name => {
+        if (state.salesmanCars[name] === removed) delete state.salesmanCars[name];
+      });
+    }
+  }
   else if (type === 'product') {
     const removed = state.products.splice(idx, 1)[0];
-    if (removed) delete state.inventory[removed];
+    if (removed) {
+      delete state.inventory[removed];
+      state.inventoryAdjustments = state.inventoryAdjustments.filter(adj => adj.product !== removed);
+    }
   }
   saveState();
   renderMasterData();
@@ -1687,10 +1853,16 @@ function removeItem(type, idx) {
 
 function addSalesman() {
   const v = normalizeText(document.getElementById('new-salesman').value);
+  const car = normalizeText(document.getElementById('new-salesman-car').value).toUpperCase();
   if (!v) return;
   if (state.salesmen.includes(v)) { alert('Salesman sudah ada.'); return; }
   state.salesmen.push(v);
+  if (car) {
+    state.salesmanCars[v] = car;
+    if (!state.cars.includes(car)) state.cars.push(car);
+  }
   document.getElementById('new-salesman').value = '';
+  document.getElementById('new-salesman-car').value = '';
   saveState(); renderMasterData(); initDropdowns(); updateDashboard();
   showAlert(`Salesman "${v}" ditambahkan ✅`);
 }
@@ -1716,7 +1888,7 @@ function addProduct() {
   document.getElementById('new-product').value = '';
   document.getElementById('new-product-stock').value = '';
   document.getElementById('new-product-min').value = '';
-  saveState(); renderMasterData(); renderProductTable(); renderInventoryTable(); updateDashboard();
+  saveState(); renderMasterData(); renderProductTable(); renderInventoryAdjustmentProducts(); renderInventoryTable(); updateDashboard();
   showAlert(`Produk "${v}" ditambahkan ✅`);
 }
 
