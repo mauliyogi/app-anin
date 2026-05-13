@@ -146,9 +146,9 @@
 
   /* BUTTONS */
   .btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 8px 16px; border-radius: var(--radius);
-    font-size: 13px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 10px 18px; border-radius: var(--radius);
+    font-size: 14px; font-weight: 700;
     cursor: pointer; border: none; transition: all 0.15s;
     font-family: 'Plus Jakarta Sans', sans-serif;
   }
@@ -163,7 +163,7 @@
   .btn-outline:hover { background: var(--surface2); color: var(--text); }
   .btn-danger { background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
   .btn-danger:hover { background: rgba(248,81,73,0.25); }
-  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-sm { padding: 8px 12px; font-size: 12px; }
   .btn-lg { padding: 12px 24px; font-size: 15px; }
 
   /* FORMS */
@@ -180,7 +180,7 @@
   .form-row.col2 { grid-template-columns: 1fr 1fr; }
   .form-row.col3 { grid-template-columns: 1fr 1fr 1fr; }
   .form-row.col4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
-  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
   .form-label {
     font-size: 12px; font-weight: 600; color: var(--text2);
     text-transform: uppercase; letter-spacing: 0.5px;
@@ -192,6 +192,7 @@
     font-family: 'Plus Jakarta Sans', sans-serif;
     transition: border 0.15s;
     width: 100%;
+    min-width: 0;
   }
   .form-input:focus, .form-select:focus {
     outline: none; border-color: var(--accent);
@@ -236,6 +237,13 @@
   .product-table td:first-child { color: var(--text2); font-size: 12px; }
   .product-table th:nth-child(2), .product-table td:nth-child(2) { min-width: 180px; }
   .product-table th:nth-child(n+3), .product-table td:nth-child(n+3) { width: 24%; }
+  .records-table th:last-child, .records-table td:last-child { width: 260px; }
+  .record-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .day-nav { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+  .day-nav .form-input { max-width:180px; }
+  .records-day-title { font-size:13px; color:var(--text2); font-weight:600; }
+  #page-form { position: relative; }
+  .form-reset-floating { position:absolute; top:0; right:0; z-index:5; box-shadow:0 8px 24px rgba(0,0,0,0.18); }
   .mobile-hint { display:none; color: var(--text3); font-size: 12px; margin-top: 6px; }
   .inventory-adjust-grid { display:grid; grid-template-columns: 1.4fr 0.8fr 0.8fr 1.2fr auto; gap:8px; align-items:end; }
 
@@ -354,12 +362,35 @@
     .record-filters { flex-wrap: wrap; }
     .record-filters .form-input, .record-filters .form-select { max-width:none !important; width:100%; }
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .product-table { min-width: 560px; }
-    .product-table input { font-size: 18px; min-height: 44px; }
+    .product-table { min-width: 0; table-layout: fixed; }
+    .product-table thead { display: none; }
+    .product-table, .product-table tbody, .product-table tr, .product-table td { display: block; width: 100%; }
+    .product-table tr {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+      padding: 12px; border-bottom: 1px solid var(--border);
+      background: var(--surface2); border-radius: var(--radius); margin-bottom: 10px;
+    }
+    .product-table td { border: 0; padding: 0; min-width: 0 !important; }
+    .product-table td:nth-child(1), .product-table td:nth-child(2) { grid-column: 1 / -1; text-align: left; }
+    .product-table td:nth-child(2) { font-weight: 700; color: var(--text); }
+    .product-table td:nth-child(3)::before { content: 'NAIK'; }
+    .product-table td:nth-child(4)::before { content: 'TURUN'; }
+    .product-table td:nth-child(5)::before { content: 'JUAL'; }
+    .product-table td:nth-child(n+3)::before { display:block; margin-bottom:6px; font-size:11px; font-weight:800; color:var(--text2); letter-spacing:0.5px; }
+    .product-table input { font-size: 18px; min-height: 48px; min-width: 0; }
+    .records-table { min-width:0; }
+    .records-table thead { display:none; }
+    .records-table, .records-table tbody, .records-table tr, .records-table td { display:block; width:100%; }
+    .records-table tr { padding:12px; border-bottom:1px solid var(--border); }
+    .records-table td { border:0; padding:6px 0; }
+    .records-table td::before { content: attr(data-label); display:block; color:var(--text2); font-size:11px; font-weight:800; text-transform:uppercase; margin-bottom:2px; }
+    .record-actions .btn { width:auto; flex:1 1 96px; min-height:42px; }
     .phase-bar { flex-direction:column; }
     .phase-step { border-right:0; border-bottom:1px solid var(--border); }
     .phase-step:last-child { border-bottom:0; }
-    .btn-lg, .btn { width:100%; justify-content:center; min-height:44px; }
+    .btn-lg, .btn { width:100%; justify-content:center; min-height:46px; }
+    .form-reset-floating { position: static; width: auto; margin: 0 0 12px auto; display:flex; }
+    .record-actions .btn, .day-nav .btn { width:auto; }
     .mobile-hint { display:block; }
     .modal { width: 94vw; padding: 16px; }
   }
@@ -538,16 +569,14 @@
       <div class="page-title">Form Transfer Antar Gudang</div>
       <div class="page-sub">PT. Sentralsari Primasentosa</div>
     </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-outline" onclick="resetForm()">↺ Reset</button>
-    </div>
   </div>
+  <button class="btn btn-outline form-reset-floating" onclick="resetForm()">↺ Reset</button>
 
   <!-- Phase indicator -->
   <div class="phase-bar">
     <div class="phase-step active" id="phase-1">① Pagi — Isi Naik & Tanda Tangan</div>
     <div class="phase-step" id="phase-2">② Sore — Isi Turun & Jual</div>
-    <div class="phase-step" id="phase-3">③ Export & Input SPS</div>
+    <div class="phase-step" id="phase-3">③ Selesai</div>
   </div>
 
   <!-- Form Info -->
@@ -590,7 +619,7 @@
   <!-- Products Table -->
   <div class="card">
     <div class="card-title">📦 Data Produk</div>
-    <div class="mobile-hint">Geser tabel ke samping jika kolom belum terlihat penuh di layar HP.</div>
+    <div class="mobile-hint">Di layar HP, tiap produk ditampilkan sebagai kartu agar kolom NAIK, TURUN, dan JUAL mudah diisi tanpa geser.</div>
     <div class="table-wrap">
       <table class="product-table">
         <thead>
@@ -631,9 +660,6 @@
   <div style="display:flex;gap:12px;flex-wrap:wrap">
     <button class="btn btn-success btn-lg" onclick="saveForm()">💾 Simpan Form</button>
     <button class="btn btn-primary btn-lg" onclick="exportPDF()">🖨️ Export PDF</button>
-    <button class="btn btn-outline btn-lg" onclick="exportExcel()">📊 Export Excel</button>
-    <button class="btn btn-outline btn-lg" onclick="inputSPS()">⚡ Input ke SPS</button>
-    <button class="btn btn-primary btn-lg" onclick="syncToSPS()">🔄 Sinkron ke SPS</button>
   </div>
 </div>
 
@@ -644,23 +670,26 @@
       <div class="page-title">Rekap Data</div>
       <div class="page-sub">Semua riwayat form transfer</div>
     </div>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="syncRecordsToSPS()">🔄 Sinkronkan ke SPS</button>
       <button class="btn btn-outline" onclick="exportAllExcel()">📊 Export Semua ke Excel</button>
     </div>
   </div>
 
-  <div class="record-filters">
-    <input type="date" class="form-input" id="filter-dari" placeholder="Dari tanggal">
-    <input type="date" class="form-input" id="filter-sampai" placeholder="Sampai tanggal">
-    <select class="form-select" id="filter-salesman" style="max-width:180px">
+  <div class="day-nav">
+    <button class="btn btn-outline" onclick="changeRecordsDay(-1)">← Prev</button>
+    <input type="date" class="form-input" id="filter-dari" onchange="filterRecords()">
+    <button class="btn btn-outline" onclick="changeRecordsDay(1)">Next →</button>
+    <select class="form-select" id="filter-salesman" style="max-width:180px" onchange="filterRecords()">
       <option value="">Semua Salesman</option>
     </select>
-    <button class="btn btn-outline" onclick="filterRecords()">🔍 Filter</button>
-    <button class="btn btn-outline" onclick="clearFilter()">✕ Reset</button>
+    <button class="btn btn-outline" onclick="clearFilter()">Hari Ini</button>
+    <div class="records-day-title" id="records-day-title"></div>
   </div>
+  <input type="hidden" id="filter-sampai">
   
-  <div class="table-wrap">
-    <table>
+  <div class="table-wrap records-wrap">
+    <table class="records-table">
       <thead>
         <tr>
           <th>No. Form</th>
@@ -828,9 +857,9 @@
     <div class="sps-title">⚡ Informasi Input SPS</div>
     <div class="sps-desc">
       Aplikasi ini dirancang untuk mengganti pencatatan kertas di lapangan via HP, lalu menyiapkan data digital agar bisa masuk ke SPS.
-      Fitur "Input ke SPS" dan "Sinkron ke SPS" akan menyimpan form, membuat file Excel template SPS, dan menyiapkan data untuk di-copy-paste atau di-import tanpa mengetik ulang.
+      Fitur "Sinkronkan ke SPS" di Rekap Data akan membuat file Excel template SPS harian agar data bisa di-copy-paste atau di-import tanpa mengetik ulang.
       <br><br>
-      Format output: <strong>SPS_Import_[NomorForm]_[Tanggal].xlsx</strong>
+      Format output: <strong>SPS_Rekap_Harian_[Tanggal].xlsx</strong>
     </div>
   </div>
 </div>
@@ -1028,7 +1057,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Set today's date
   const today = new Date();
   document.getElementById('today-date').textContent = today.toLocaleDateString('id-ID', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-  document.getElementById('f-tanggal').value = today.toISOString().split('T')[0];
+  const todayISO = today.toISOString().split('T')[0];
+  document.getElementById('f-tanggal').value = todayISO;
+  document.getElementById('filter-dari').value = todayISO;
   applyTheme();
   setAutoFormNumber(true);
   
@@ -1476,6 +1507,62 @@ function inputSPS(autoDownload = false) {
 }
 
 
+function buildSPSWorkbookForRecords(records) {
+  const wb = XLSX.utils.book_new();
+  const rows = [
+    ['=== FORMAT IMPORT SPS - REKAP HARIAN ==='],
+    ['Tanggal Sinkron:', new Date().toLocaleString('id-ID')],
+    ['Tanggal Rekap:', document.getElementById('filter-dari')?.value || ''],
+    ['Jumlah Form:', records.length],
+    [],
+    ['Tanggal', 'No. Form', 'Nomer TIS', 'Salesman', 'No. Polisi', 'Kode Produk', 'Nama Produk', 'Qty Naik', 'Qty Turun', 'Qty Jual', 'Satuan']
+  ];
+  records.forEach(record => {
+    (record.products || [])
+      .filter(product => toInt(product.naik) > 0 || toInt(product.turun) > 0 || toInt(product.jual) > 0)
+      .forEach((product, index) => {
+        rows.push([
+          record.tanggal,
+          record.nomer,
+          record.tis || '',
+          record.salesman,
+          record.polisi,
+          `PROD-${String(index + 1).padStart(3, '0')}`,
+          product.name,
+          toInt(product.naik),
+          toInt(product.turun),
+          toInt(product.jual),
+          'pcs'
+        ]);
+      });
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:12},{wch:18},{wch:14},{wch:16},{wch:14},{wch:12},{wch:30},{wch:10},{wch:10},{wch:10},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, ws, 'SPS_Rekap_Harian');
+  return wb;
+}
+
+function getFilteredRecordsForCurrentDay() {
+  const selectedDate = document.getElementById('filter-dari')?.value || new Date().toISOString().split('T')[0];
+  const salesman = document.getElementById('filter-salesman')?.value || '';
+  return state.records.filter(record => record.tanggal === selectedDate && (!salesman || record.salesman === salesman));
+}
+
+function syncRecordsToSPS() {
+  if (!requireXLSX()) return;
+  const records = getFilteredRecordsForCurrentDay();
+  const selectedDate = document.getElementById('filter-dari')?.value || new Date().toISOString().split('T')[0];
+  if (records.length === 0) {
+    alert('Tidak ada data rekap pada tanggal yang dipilih untuk disinkronkan ke SPS.');
+    return;
+  }
+  const wb = buildSPSWorkbookForRecords(records);
+  const fn = `SPS_Rekap_Harian_${selectedDate}.xlsx`;
+  XLSX.writeFile(wb, fn);
+  showAlert('Rekap harian berhasil disinkronkan ke SPS! 🔄');
+}
+
+
 // ===================== INVENTORY =====================
 function getInventorySummary() {
   ensureInventoryDefaults();
@@ -1661,46 +1748,59 @@ function updateDashboard() {
 }
 
 // ===================== RECORDS =====================
+function formatDisplayDate(dateValue) {
+  if (!dateValue) return '';
+  return new Date(`${dateValue}T00:00:00`).toLocaleDateString('id-ID', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+}
+
+function changeRecordsDay(offset) {
+  const input = document.getElementById('filter-dari');
+  const base = input.value || new Date().toISOString().split('T')[0];
+  const date = new Date(`${base}T00:00:00`);
+  date.setDate(date.getDate() + offset);
+  input.value = date.toISOString().split('T')[0];
+  filterRecords();
+}
+
 function renderRecordsTable(filtered) {
-  const data = filtered || state.records;
+  const selectedDate = document.getElementById('filter-dari')?.value || new Date().toISOString().split('T')[0];
+  const salesman = document.getElementById('filter-salesman')?.value || '';
+  const data = filtered || state.records.filter(record => record.tanggal === selectedDate && (!salesman || record.salesman === salesman));
   const tbody = document.getElementById('records-table');
+  const dayTitle = document.getElementById('records-day-title');
+  if (dayTitle) dayTitle.textContent = `Menampilkan ${data.length} form pada ${formatDisplayDate(selectedDate)}`;
   if (data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Belum ada data</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Belum ada data pada hari ini</td></tr>';
     return;
   }
   tbody.innerHTML = data.map(r => `
     <tr>
-      <td><span style="font-family:monospace;font-size:12px;color:var(--accent2)">${h(r.nomer)}</span></td>
-      <td>${h(r.tanggal)}</td>
-      <td>${h(r.salesman)}</td>
-      <td>${h(r.polisi)}</td>
-      <td class="text-center">${(r.products || []).reduce((s,p)=>s+toInt(p.naik),0)}</td>
-      <td class="text-center">${(r.products || []).reduce((s,p)=>s+toInt(p.turun),0)}</td>
-      <td class="text-center" style="font-weight:700;color:var(--green)">${(r.products || []).reduce((s,p)=>s+toInt(p.jual),0)}</td>
-      <td><span class="badge badge-${statusClass(r.status)}">${statusLabel(r.status)}</span></td>
-      <td style="display:flex;gap:4px">
-        <button class="btn btn-sm btn-outline" onclick="loadFormForEdit(${Number(r.id)})">✏️ Edit</button>
-        <button class="btn btn-sm btn-outline" onclick="viewRecord(${Number(r.id)})">👁️ Lihat</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteRecord(${Number(r.id)})">🗑️</button>
+      <td data-label="No. Form"><span style="font-family:monospace;font-size:12px;color:var(--accent2)">${h(r.nomer)}</span></td>
+      <td data-label="Tanggal">${h(r.tanggal)}</td>
+      <td data-label="Salesman">${h(r.salesman)}</td>
+      <td data-label="No. Polisi">${h(r.polisi)}</td>
+      <td data-label="Total Naik" class="text-center">${(r.products || []).reduce((s,p)=>s+toInt(p.naik),0)}</td>
+      <td data-label="Total Turun" class="text-center">${(r.products || []).reduce((s,p)=>s+toInt(p.turun),0)}</td>
+      <td data-label="Total Jual" class="text-center" style="font-weight:700;color:var(--green)">${(r.products || []).reduce((s,p)=>s+toInt(p.jual),0)}</td>
+      <td data-label="Status"><span class="badge badge-${statusClass(r.status)}">${statusLabel(r.status)}</span></td>
+      <td data-label="Aksi">
+        <div class="record-actions">
+          <button class="btn btn-sm btn-outline" onclick="viewRecord(${Number(r.id)})">👁️ Lihat</button>
+          <button class="btn btn-sm btn-outline" onclick="loadFormForEdit(${Number(r.id)})">✏️ Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteRecord(${Number(r.id)})">🗑️ Hapus</button>
+        </div>
       </td>
     </tr>`).join('');
 }
 
 function filterRecords() {
-  const dari = document.getElementById('filter-dari').value;
-  const sampai = document.getElementById('filter-sampai').value;
-  const salesman = document.getElementById('filter-salesman').value;
-  
-  let filtered = state.records;
-  if (dari) filtered = filtered.filter(r => r.tanggal >= dari);
-  if (sampai) filtered = filtered.filter(r => r.tanggal <= sampai);
-  if (salesman) filtered = filtered.filter(r => r.salesman === salesman);
-  renderRecordsTable(filtered);
+  renderRecordsTable(getFilteredRecordsForCurrentDay());
 }
 
 function clearFilter() {
-  document.getElementById('filter-dari').value = '';
-  document.getElementById('filter-sampai').value = '';
+  document.getElementById('filter-dari').value = new Date().toISOString().split('T')[0];
   document.getElementById('filter-salesman').value = '';
   renderRecordsTable();
 }
